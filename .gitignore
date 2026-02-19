@@ -1,0 +1,11 @@
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# The original Arabic-named file (only index.html goes to GitHub Pages)

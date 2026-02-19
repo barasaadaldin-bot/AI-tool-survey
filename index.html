@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architectural Rendering Tool — Customer Discovery Poll</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400&family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --accent: #c8a96e;
+    --accent-dim: rgba(200, 169, 110, 0.12);
+    --text: #e8e2d9;
+    --text-muted: #7a7570;
+    --text-dim: #4a4540;
+    --correct: #6eb89e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-weight: 300;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 20px;
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  body.ar {
+    font-family: 'Cairo', sans-serif;
+    font-size: 17px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(200,169,110,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 10% 90%, rgba(110,184,158,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Language Toggle ── */
+  .lang-toggle {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  html[dir="rtl"] .lang-toggle { right: auto; left: 24px; }
+
+  .lang-btn {
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+
+  .lang-btn.ar-btn { font-family: 'Cairo', sans-serif; font-size: 12px; letter-spacing: 0; }
+  .lang-btn.active { background: var(--accent); color: var(--bg); }
+  .lang-btn:not(.active):hover { color: var(--text); background: rgba(255,255,255,0.04); }
+
+  .lang-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+  /* ── Container ── */
+  .container { width: 100%; max-width: 680px; position: relative; z-index: 1; transition: opacity 0.2s; }
+  .container.switching { opacity: 0; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 60px; opacity: 0; animation: fadeUp 0.8s ease forwards; }
+
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  body.ar .eyebrow { font-family: 'Cairo', sans-serif; letter-spacing: 0.05em; font-size: 13px; }
+
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(2.8rem, 6vw, 4.2rem);
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 20px;
+    letter-spacing: -0.02em;
+  }
+  body.ar h1 { font-family: 'Cairo', sans-serif; font-weight: 300; letter-spacing: 0; font-size: clamp(2.4rem, 6vw, 3.6rem); line-height: 1.4; }
+
+  h1 em { font-style: italic; color: var(--accent); }
+  body.ar h1 em { font-style: normal; }
+
+  .subtitle { color: var(--text-muted); font-size: 15px; max-width: 460px; line-height: 1.9; }
+  body.ar .subtitle { font-size: 16px; }
+
+  /* ── Progress ── */
+  .progress-wrap { margin-bottom: 48px; opacity: 0; animation: fadeUp 0.8s 0.1s ease forwards; }
+  .progress-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .progress-label { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); }
+  body.ar .progress-label { font-family: 'Cairo', sans-serif; letter-spacing: 0; font-size: 13px; }
+  .progress-count { font-size: 12px; color: var(--accent); letter-spacing: 0.1em; }
+  .progress-bar { height: 1px; background: var(--border); position: relative; overflow: visible; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width 0.5s cubic-bezier(0.4,0,0.2,1); position: relative; }
+  .progress-fill::after {
+    content: ''; position: absolute; right: -3px; top: -3px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 12px var(--accent);
+  }
+  html[dir="rtl"] .progress-fill::after { right: auto; left: -3px; }
+
+  /* ── Sections ── */
+  .section { margin-bottom: 56px; opacity: 0; animation: fadeUp 0.7s ease forwards; }
+  .section:nth-child(2) { animation-delay: 0.15s; }
+  .section:nth-child(3) { animation-delay: 0.25s; }
+  .section:nth-child(4) { animation-delay: 0.35s; }
+  .section:nth-child(5) { animation-delay: 0.45s; }
+  .section:nth-child(6) { animation-delay: 0.55s; }
+  .section:nth-child(7) { animation-delay: 0.65s; }
+  .section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+  .section-num { font-family: 'Cormorant Garamond', serif; font-size: 13px; color: var(--accent); letter-spacing: 0.1em; white-space: nowrap; flex-shrink: 0; }
+  .section-line { height: 1px; background: var(--border); flex: 1; }
+  .section-title { font-family: 'Cormorant Garamond', serif; font-weight: 400; font-size: 1.6rem; color: var(--text); margin-bottom: 6px; letter-spacing: -0.01em; }
+  body.ar .section-title { font-family: 'Cairo', sans-serif; letter-spacing: 0; }
+  .section-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  body.ar .section-desc { font-size: 14px; }
+
+  /* ── Questions ── */
+  .question { margin-bottom: 32px; padding: 24px; border: 1px solid var(--border); background: var(--surface); position: relative; transition: border-color 0.3s; }
+  .question:hover { border-color: #3a3a3a; }
+  .question.answered { border-color: rgba(200, 169, 110, 0.3); }
+  .q-num { font-size: 11px; letter-spacing: 0.2em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; }
+  body.ar .q-num { font-family: 'Cairo', sans-serif; letter-spacing: 0; font-size: 12px; }
+  .q-text { font-family: 'Cormorant Garamond', serif; font-weight: 400; font-size: 1.25rem; color: var(--text); margin-bottom: 18px; line-height: 1.5; }
+  body.ar .q-text { font-family: 'Cairo', sans-serif; font-size: 1.15rem; line-height: 1.7; }
+  .q-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; letter-spacing: 0.05em; }
+  body.ar .q-hint { font-size: 13px; letter-spacing: 0; }
+  .q-sub { font-size: 12px; color: var(--text-muted); }
+  body.ar .q-sub { font-size: 13px; }
+
+  /* ── Options ── */
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .options.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .option { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; user-select: none; position: relative; }
+  .option:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .option input { position: absolute; opacity: 0; pointer-events: none; }
+  .option-box { width: 16px; height: 16px; border: 1px solid var(--text-dim); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .option.radio .option-box { border-radius: 50%; }
+  .option-box::after { content: ''; width: 7px; height: 7px; background: var(--accent); border-radius: 0; opacity: 0; transform: scale(0.5); transition: all 0.15s; }
+  .option.radio .option-box::after { border-radius: 50%; }
+  .option.selected .option-box { border-color: var(--accent); background: var(--accent-dim); }
+  .option.selected .option-box::after { opacity: 1; transform: scale(1); }
+  .option-label { font-size: 14px; color: var(--text-muted); transition: color 0.2s; flex: 1; }
+  body.ar .option-label { font-size: 15px; }
+  .option.selected .option-label { color: var(--text); }
+
+  /* ── Range ── */
+  .range-wrap { padding-top: 8px; }
+  .range-labels { display: flex; justify-content: space-between; margin-bottom: 12px; }
+  .range-label { font-size: 12px; color: var(--text-muted); letter-spacing: 0.08em; }
+  body.ar .range-label { font-size: 13px; letter-spacing: 0; }
+  input[type="range"] { -webkit-appearance: none; width: 100%; height: 1px; background: var(--border); outline: none; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border: 1px solid var(--accent); background: var(--bg); cursor: pointer; transition: background 0.2s; }
+  input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent-dim); }
+  .range-value { text-align: center; margin-top: 12px; font-size: 14px; color: var(--accent); letter-spacing: 0.1em; }
+
+  /* ── Text Input ── */
+  textarea, input[type="text"] { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 14px; padding: 14px 16px; resize: vertical; outline: none; transition: border-color 0.2s; line-height: 1.7; }
+  body.ar textarea, body.ar input[type="text"] { font-family: 'Cairo', sans-serif; font-size: 15px; text-align: right; direction: rtl; }
+  textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
+  textarea::placeholder, input[type="text"]::placeholder { color: var(--text-dim); }
+
+  /* ── Ranking ── */
+  .rank-items { display: flex; flex-direction: column; gap: 6px; }
+  .rank-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--border); background: var(--surface); cursor: grab; transition: all 0.2s; user-select: none; touch-action: none; }
+  .rank-item:active { cursor: grabbing; }
+  .rank-item.dragging { opacity: 0.5; border-color: var(--accent); }
+  .rank-item.touch-dragging { opacity: 0.95; background: var(--surface); transition: none; }
+  .rank-item.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+  .rank-num { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--accent); min-width: 24px; }
+  .rank-text { font-size: 14px; color: var(--text-muted); flex: 1; }
+  body.ar .rank-text { font-size: 15px; }
+  .drag-handle { color: var(--text-dim); font-size: 12px; }
+
+  /* ── Submit ── */
+  .submit-section { margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--border); text-align: center; opacity: 0; animation: fadeUp 0.7s 0.7s ease forwards; }
+  .completion-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 24px; padding: 8px 16px; border: 1px solid var(--border); }
+  body.ar .completion-badge { font-family: 'Cairo', sans-serif; letter-spacing: 0; font-size: 14px; }
+  .completion-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); transition: background 0.3s; flex-shrink: 0; }
+  .completion-dot.complete { background: var(--correct); box-shadow: 0 0 8px var(--correct); }
+  .btn-submit { display: inline-block; padding: 18px 54px; background: var(--accent); color: var(--bg); font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; border: none; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; }
+  body.ar .btn-submit { font-family: 'Cairo', sans-serif; font-size: 16px; letter-spacing: 0; }
+  .btn-submit::before { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0.15); transform: translateX(-100%); transition: transform 0.4s; }
+  .btn-submit:hover::before { transform: translateX(0); }
+  .btn-submit:hover { box-shadow: 0 0 30px rgba(200,169,110,0.3); }
+  .privacy-note { margin-top: 16px; font-size: 12px; color: var(--text-dim); letter-spacing: 0.05em; }
+  body.ar .privacy-note { font-size: 13px; letter-spacing: 0; }
+
+  /* ── Success ── */
+  .success-state { display: none; text-align: center; padding: 80px 20px; opacity: 0; }
+  .success-state.visible { display: block; animation: fadeUp 0.6s ease forwards; }
+  .success-icon { font-family: 'Cormorant Garamond', serif; font-size: 4rem; color: var(--accent); margin-bottom: 24px; display: block; }
+  .success-title { font-family: 'Cormorant Garamond', serif; font-size: 2.4rem; font-weight: 300; margin-bottom: 12px; }
+  body.ar .success-title { font-family: 'Cairo', sans-serif; }
+  .success-sub { font-size: 15px; color: var(--text-muted); max-width: 360px; margin: 0 auto; }
+  body.ar .success-sub { font-size: 16px; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 500px) {
+    .options.two-col { grid-template-columns: 1fr; }
+    h1 { font-size: 2rem; }
+    .lang-toggle { top: 12px; right: 12px; }
+    html[dir="rtl"] .lang-toggle { left: 12px; right: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="lang-toggle">
+  <button class="lang-btn active" id="btnEn" onclick="setLang('en')">EN</button>
+  <div class="lang-divider"></div>
+  <button class="lang-btn ar-btn" id="btnAr" onclick="setLang('ar')">العربية</button>
+</div>
+
+<div class="container" id="mainContainer">
+
+  <div class="header">
+    <div class="eyebrow" data-i18n="eyebrow">Customer Discovery Poll</div>
+    <h1 data-i18n-html="h1">Help us build<br>the <em>perfect</em> tool<br>for your workflow</h1>
+    <p class="subtitle" data-i18n="subtitle">A quick 5-minute survey to understand how you work, what you need, and what the ideal architectural rendering tool looks like for you.</p>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span class="progress-label" data-i18n="completion">Completion</span>
+      <span class="progress-count" id="progressCount">0 / 22</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <form id="pollForm">
+
+    <!-- S1 -->
+    <div class="section">
+      <div class="section-header"><span class="section-num" data-i18n="s1num">01 —</span><div class="section-line"></div></div>
+      <div class="section-title" data-i18n="s1title">Who You Are</div>
+      <div class="section-desc" data-i18n="s1desc">Help us understand your professional background.</div>
+
+      <div class="question" id="q1">
+        <div class="q-num" data-i18n="q1num">Question 01</div>
+        <div class="q-text" data-i18n="q1text">What best describes your primary role?</div>
+        <div class="options" data-type="radio" data-id="q1">
+          <label class="option radio"><input type="radio" name="q1" value="architect"><span class="option-box"></span><span class="option-label" data-i18n="q1a1">Architect</span></label>
+          <label class="option radio"><input type="radio" name="q1" value="interior_designer"><span class="option-box"></span><span class="option-label" data-i18n="q1a2">Interior Designer</span></label>
+          <label class="option radio"><input type="radio" name="q1" value="3d_visualizer"><span class="option-box"></span><span class="option-label" data-i18n="q1a3">3D Visualizer / Rendering Artist</span></label>
+          <label class="option radio"><input type="radio" name="q1" value="developer"><span class="option-box"></span><span class="option-label" data-i18n="q1a4">Real Estate Developer</span></label>
+          <label class="option radio"><input type="radio" name="q1" value="contractor"><span class="option-box"></span><span class="option-label" data-i18n="q1a5">Contractor / Builder</span></label>
+          <label class="option radio"><input type="radio" name="q1" value="student"><span class="option-box"></span><span class="option-label" data-i18n="q1a6">Student</span></label>
+          <label class="option radio"><input type="radio" name="q1" value="other_role"><span class="option-box"></span><span class="option-label" data-i18n="q1a7">Other</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q2">
+        <div class="q-num" data-i18n="q2num">Question 02</div>
+        <div class="q-text" data-i18n="q2text">What is the size of your firm or practice?</div>
+        <div class="options" data-type="radio" data-id="q2">
+          <label class="option radio"><input type="radio" name="q2" value="solo"><span class="option-box"></span><span class="option-label" data-i18n="q2a1">Solo / Freelance</span></label>
+          <label class="option radio"><input type="radio" name="q2" value="small"><span class="option-box"></span><span class="option-label" data-i18n="q2a2">Small (2–10 people)</span></label>
+          <label class="option radio"><input type="radio" name="q2" value="medium"><span class="option-box"></span><span class="option-label" data-i18n="q2a3">Medium (11–50 people)</span></label>
+          <label class="option radio"><input type="radio" name="q2" value="large"><span class="option-box"></span><span class="option-label" data-i18n="q2a4">Large (50+ people)</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q3">
+        <div class="q-num" data-i18n="q3num">Question 03</div>
+        <div class="q-text" data-i18n="q3text">How many rendering projects do you work on per month?</div>
+        <div class="options" data-type="radio" data-id="q3">
+          <label class="option radio"><input type="radio" name="q3" value="1-2"><span class="option-box"></span><span class="option-label" data-i18n="q3a1">1–2 projects</span></label>
+          <label class="option radio"><input type="radio" name="q3" value="3-5"><span class="option-box"></span><span class="option-label" data-i18n="q3a2">3–5 projects</span></label>
+          <label class="option radio"><input type="radio" name="q3" value="6-10"><span class="option-box"></span><span class="option-label" data-i18n="q3a3">6–10 projects</span></label>
+          <label class="option radio"><input type="radio" name="q3" value="10+"><span class="option-box"></span><span class="option-label" data-i18n="q3a4">More than 10 projects</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q_shots">
+        <div class="q-num" data-i18n="qsnum">Question 04</div>
+        <div class="q-text" data-i18n="qstext">On a typical mid-size project, how many individual shots or renders do you deliver to the client?</div>
+        <div class="options" data-type="radio" data-id="q_shots">
+          <label class="option radio"><input type="radio" name="q_shots" value="1-3"><span class="option-box"></span><span class="option-label" data-i18n="qsa1">1–3 shots</span></label>
+          <label class="option radio"><input type="radio" name="q_shots" value="4-8"><span class="option-box"></span><span class="option-label" data-i18n="qsa2">4–8 shots</span></label>
+          <label class="option radio"><input type="radio" name="q_shots" value="9-15"><span class="option-box"></span><span class="option-label" data-i18n="qsa3">9–15 shots</span></label>
+          <label class="option radio"><input type="radio" name="q_shots" value="16-30"><span class="option-box"></span><span class="option-label" data-i18n="qsa4">16–30 shots</span></label>
+          <label class="option radio"><input type="radio" name="q_shots" value="30+"><span class="option-box"></span><span class="option-label" data-i18n="qsa5">30+ shots</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- S2 -->
+    <div class="section">
+      <div class="section-header"><span class="section-num" data-i18n="s2num">02 —</span><div class="section-line"></div></div>
+      <div class="section-title" data-i18n="s2title">Current Workflow</div>
+      <div class="section-desc" data-i18n="s2desc">Tell us about the tools and processes you use today.</div>
+
+      <div class="question" id="q4">
+        <div class="q-num" data-i18n="q4num">Question 05</div>
+        <div class="q-text"><span data-i18n="q4text">Which rendering tools do you currently use?</span> <span class="q-sub" data-i18n="selectAll">(select all that apply)</span></div>
+        <div class="options two-col" data-type="checkbox" data-id="q4">
+          <label class="option checkbox"><input type="checkbox" name="q4" value="lumion"><span class="option-box"></span><span class="option-label">Lumion</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="vray"><span class="option-box"></span><span class="option-label">V-Ray</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="enscape"><span class="option-box"></span><span class="option-label">Enscape</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="sketchup"><span class="option-box"></span><span class="option-label">SketchUp</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="rhino"><span class="option-box"></span><span class="option-label">Rhino / Grasshopper</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="revit"><span class="option-box"></span><span class="option-label">Revit</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="blender"><span class="option-box"></span><span class="option-label">Blender</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="corona"><span class="option-box"></span><span class="option-label">Corona Renderer</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="unreal"><span class="option-box"></span><span class="option-label">Unreal Engine</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q4" value="ai_tool"><span class="option-box"></span><span class="option-label" data-i18n="q4ai">AI-based tool</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q5">
+        <div class="q-num" data-i18n="q5num">Question 06</div>
+        <div class="q-text" data-i18n="q5text">On average, how long does it take to produce a single high-quality render?</div>
+        <div class="options" data-type="radio" data-id="q5">
+          <label class="option radio"><input type="radio" name="q5" value="<1h"><span class="option-box"></span><span class="option-label" data-i18n="q5a1">Less than 1 hour</span></label>
+          <label class="option radio"><input type="radio" name="q5" value="1-3h"><span class="option-box"></span><span class="option-label" data-i18n="q5a2">1–3 hours</span></label>
+          <label class="option radio"><input type="radio" name="q5" value="3-8h"><span class="option-box"></span><span class="option-label" data-i18n="q5a3">3–8 hours (half a day)</span></label>
+          <label class="option radio"><input type="radio" name="q5" value="1-2d"><span class="option-box"></span><span class="option-label" data-i18n="q5a4">1–2 days</span></label>
+          <label class="option radio"><input type="radio" name="q5" value="2d+"><span class="option-box"></span><span class="option-label" data-i18n="q5a5">More than 2 days</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q6">
+        <div class="q-num" data-i18n="q6num">Question 07</div>
+        <div class="q-text" data-i18n="q6text">What is the most painful or time-consuming part of your current rendering workflow?</div>
+        <textarea name="q6" rows="3" data-i18n-ph="q6ph" placeholder="e.g. Setting up lighting takes forever..." oninput="checkTextAnswered('q6')"></textarea>
+      </div>
+    </div>
+
+    <!-- S3 -->
+    <div class="section">
+      <div class="section-header"><span class="section-num" data-i18n="s3num">03 —</span><div class="section-line"></div></div>
+      <div class="section-title" data-i18n="s3title">Output & Quality</div>
+      <div class="section-desc" data-i18n="s3desc">What types of visuals do you create and need?</div>
+
+      <div class="question" id="q7">
+        <div class="q-num" data-i18n="q7num">Question 08</div>
+        <div class="q-text"><span data-i18n="q7text">What types of renders do you most commonly produce?</span> <span class="q-sub" data-i18n="selectAll">(select all)</span></div>
+        <div class="options two-col" data-type="checkbox" data-id="q7">
+          <label class="option checkbox"><input type="checkbox" name="q7" value="exterior"><span class="option-box"></span><span class="option-label" data-i18n="q7a1">Exterior stills</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q7" value="interior"><span class="option-box"></span><span class="option-label" data-i18n="q7a2">Interior stills</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q7" value="walkthrough"><span class="option-box"></span><span class="option-label" data-i18n="q7a3">Animated walkthroughs</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q7" value="floorplan_3d"><span class="option-box"></span><span class="option-label" data-i18n="q7a4">3D floor plans</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q7" value="aerial"><span class="option-box"></span><span class="option-label" data-i18n="q7a5">Aerial / bird's-eye views</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q7" value="vr"><span class="option-box"></span><span class="option-label" data-i18n="q7a6">VR / 360° renders</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q7" value="concept_sketch"><span class="option-box"></span><span class="option-label" data-i18n="q7a7">Concept / mood images</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q7" value="staging"><span class="option-box"></span><span class="option-label" data-i18n="q7a8">Virtual staging</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q8">
+        <div class="q-num" data-i18n="q8num">Question 09</div>
+        <div class="q-text" data-i18n="q8text">How satisfied are you with the photorealism of renders from your current tools?</div>
+        <div class="range-wrap">
+          <div class="range-labels">
+            <span class="range-label" data-i18n="veryDissatisfied">Very Dissatisfied</span>
+            <span class="range-label" data-i18n="verySatisfied">Very Satisfied</span>
+          </div>
+          <input type="range" name="q8" min="1" max="10" value="5" oninput="updateRange('q8',this.value)">
+          <div class="range-value" id="q8val">5 / 10</div>
+        </div>
+      </div>
+
+      <div class="question" id="q9">
+        <div class="q-num" data-i18n="q9num">Question 10</div>
+        <div class="q-text" data-i18n="q9text">How important is style control — switching between photorealistic, sketchy, watercolor, or artistic renders?</div>
+        <div class="options" data-type="radio" data-id="q9">
+          <label class="option radio"><input type="radio" name="q9" value="not_important"><span class="option-box"></span><span class="option-label" data-i18n="q9a1">Not important — I only need photorealism</span></label>
+          <label class="option radio"><input type="radio" name="q9" value="nice"><span class="option-box"></span><span class="option-label" data-i18n="q9a2">Nice to have occasionally</span></label>
+          <label class="option radio"><input type="radio" name="q9" value="important"><span class="option-box"></span><span class="option-label" data-i18n="q9a3">Important for client presentations</span></label>
+          <label class="option radio"><input type="radio" name="q9" value="critical"><span class="option-box"></span><span class="option-label" data-i18n="q9a4">Critical — I use multiple styles constantly</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- S4 -->
+    <div class="section">
+      <div class="section-header"><span class="section-num" data-i18n="s4num">04 —</span><div class="section-line"></div></div>
+      <div class="section-title" data-i18n="s4title">AI & Innovation</div>
+      <div class="section-desc" data-i18n="s4desc">Your attitude toward AI-powered rendering.</div>
+
+      <div class="question" id="q10">
+        <div class="q-num" data-i18n="q10num">Question 11</div>
+        <div class="q-text" data-i18n="q10text">Have you tried any AI-powered rendering or design tools?</div>
+        <div class="options" data-type="radio" data-id="q10">
+          <label class="option radio"><input type="radio" name="q10" value="yes_regular"><span class="option-box"></span><span class="option-label" data-i18n="q10a1">Yes, I use them regularly</span></label>
+          <label class="option radio"><input type="radio" name="q10" value="yes_few"><span class="option-box"></span><span class="option-label" data-i18n="q10a2">Yes, tried a few but didn't stick with any</span></label>
+          <label class="option radio"><input type="radio" name="q10" value="no_interested"><span class="option-box"></span><span class="option-label" data-i18n="q10a3">No, but I'm interested</span></label>
+          <label class="option radio"><input type="radio" name="q10" value="no_skeptical"><span class="option-box"></span><span class="option-label" data-i18n="q10a4">No, and I'm skeptical about quality</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q11">
+        <div class="q-num" data-i18n="q11num">Question 12</div>
+        <div class="q-text"><span data-i18n="q11text">What is your biggest concern about using AI in your rendering workflow?</span> <span class="q-sub" data-i18n="selectAll">(select all)</span></div>
+        <div class="options" data-type="checkbox" data-id="q11">
+          <label class="option checkbox"><input type="checkbox" name="q11" value="quality"><span class="option-box"></span><span class="option-label" data-i18n="q11a1">Output quality not good enough</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q11" value="control"><span class="option-box"></span><span class="option-label" data-i18n="q11a2">Lack of fine-grained creative control</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q11" value="accuracy"><span class="option-box"></span><span class="option-label" data-i18n="q11a3">Doesn't accurately reflect my actual design</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q11" value="ip"><span class="option-box"></span><span class="option-label" data-i18n="q11a4">IP / client confidentiality concerns</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q11" value="integration"><span class="option-box"></span><span class="option-label" data-i18n="q11a5">Poor integration with existing tools</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q11" value="none"><span class="option-box"></span><span class="option-label" data-i18n="q11a6">No concerns — excited to use AI</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q12">
+        <div class="q-num" data-i18n="q12num">Question 13</div>
+        <div class="q-text" data-i18n="q12text">Rank these AI features by how valuable they would be to you.</div>
+        <div class="q-hint" data-i18n="q12hint">Drag to reorder — top = most valuable</div>
+        <div class="rank-items" id="rankList">
+          <div class="rank-item" draggable="true" data-val="text_to_render"><span class="rank-num">1</span><span class="rank-text" data-i18n="r1">Text-to-render (describe a scene, get an image)</span><span class="drag-handle">⠿</span></div>
+          <div class="rank-item" draggable="true" data-val="img_to_render"><span class="rank-num">2</span><span class="rank-text" data-i18n="r2">Image-to-render (upload sketch or floor plan)</span><span class="drag-handle">⠿</span></div>
+          <div class="rank-item" draggable="true" data-val="auto_furnishing"><span class="rank-num">3</span><span class="rank-text" data-i18n="r3">Auto-furnishing & material suggestions</span><span class="drag-handle">⠿</span></div>
+          <div class="rank-item" draggable="true" data-val="style_transfer"><span class="rank-num">4</span><span class="rank-text" data-i18n="r4">Style transfer (apply a design aesthetic)</span><span class="drag-handle">⠿</span></div>
+          <div class="rank-item" draggable="true" data-val="lighting_ai"><span class="rank-num">5</span><span class="rank-text" data-i18n="r5">AI lighting optimization</span><span class="drag-handle">⠿</span></div>
+          <div class="rank-item" draggable="true" data-val="variation_gen"><span class="rank-num">6</span><span class="rank-text" data-i18n="r6">Instant design variation generation</span><span class="drag-handle">⠿</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S5 -->
+    <div class="section">
+      <div class="section-header"><span class="section-num" data-i18n="s5num">05 —</span><div class="section-line"></div></div>
+      <div class="section-title" data-i18n="s5title">Collaboration & Clients</div>
+      <div class="section-desc" data-i18n="s5desc">How you share and collaborate around visuals.</div>
+
+      <div class="question" id="q13">
+        <div class="q-num" data-i18n="q13num">Question 14</div>
+        <div class="q-text"><span data-i18n="q13text">How do you currently share renders with clients?</span> <span class="q-sub" data-i18n="selectAll">(select all)</span></div>
+        <div class="options" data-type="checkbox" data-id="q13">
+          <label class="option checkbox"><input type="checkbox" name="q13" value="email"><span class="option-box"></span><span class="option-label" data-i18n="q13a1">Email / file transfer</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q13" value="cloud"><span class="option-box"></span><span class="option-label" data-i18n="q13a2">Cloud link (Drive, Dropbox)</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q13" value="presentation"><span class="option-box"></span><span class="option-label" data-i18n="q13a3">In-person presentation</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q13" value="portal"><span class="option-box"></span><span class="option-label" data-i18n="q13a4">Client portal / project management tool</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q13" value="pdf"><span class="option-box"></span><span class="option-label" data-i18n="q13a5">PDF / print report</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q14">
+        <div class="q-num" data-i18n="q14num">Question 15</div>
+        <div class="q-text" data-i18n="q14text">How many revision rounds do you typically go through before a client approves a render?</div>
+        <div class="options" data-type="radio" data-id="q14">
+          <label class="option radio"><input type="radio" name="q14" value="1"><span class="option-box"></span><span class="option-label" data-i18n="q14a1">1 round — rarely need revisions</span></label>
+          <label class="option radio"><input type="radio" name="q14" value="2-3"><span class="option-box"></span><span class="option-label" data-i18n="q14a2">2–3 rounds</span></label>
+          <label class="option radio"><input type="radio" name="q14" value="4-6"><span class="option-box"></span><span class="option-label" data-i18n="q14a3">4–6 rounds</span></label>
+          <label class="option radio"><input type="radio" name="q14" value="7+"><span class="option-box"></span><span class="option-label" data-i18n="q14a4">7+ rounds — revisions are a major issue</span></label>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- S6 -->
+    <div class="section">
+      <div class="section-header"><span class="section-num" data-i18n="s6num">06 —</span><div class="section-line"></div></div>
+      <div class="section-title" data-i18n="s6title">Pricing & Adoption</div>
+      <div class="section-desc" data-i18n="s6desc">Help us understand your budget and decision-making.</div>
+
+      <div class="question" id="q16">
+        <div class="q-num" data-i18n="q16num">Question 16</div>
+        <div class="q-text" data-i18n="q16text">How much do you currently spend per month on rendering software and subscriptions?</div>
+        <div class="options" data-type="radio" data-id="q16">
+          <label class="option radio"><input type="radio" name="q16" value="0"><span class="option-box"></span><span class="option-label" data-i18n="q16a1">$0 — using free or pirated tools</span></label>
+          <label class="option radio"><input type="radio" name="q16" value="1-50"><span class="option-box"></span><span class="option-label" data-i18n="q16a2">$1–$50 / month</span></label>
+          <label class="option radio"><input type="radio" name="q16" value="50-150"><span class="option-box"></span><span class="option-label" data-i18n="q16a3">$50–$150 / month</span></label>
+          <label class="option radio"><input type="radio" name="q16" value="150-400"><span class="option-box"></span><span class="option-label" data-i18n="q16a4">$150–$400 / month</span></label>
+          <label class="option radio"><input type="radio" name="q16" value="400+"><span class="option-box"></span><span class="option-label" data-i18n="q16a5">$400+ / month</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q17">
+        <div class="q-num" data-i18n="q17num">Question 17</div>
+        <div class="q-text" data-i18n="q17text">What pricing model would you prefer?</div>
+        <div class="options" data-type="radio" data-id="q17">
+          <label class="option radio"><input type="radio" name="q17" value="monthly_sub"><span class="option-box"></span><span class="option-label" data-i18n="q17a1">Monthly subscription (flat fee)</span></label>
+          <label class="option radio"><input type="radio" name="q17" value="per_render"><span class="option-box"></span><span class="option-label" data-i18n="q17a2">Pay per render / credits model</span></label>
+          <label class="option radio"><input type="radio" name="q17" value="annual"><span class="option-box"></span><span class="option-label" data-i18n="q17a3">Annual subscription (discounted)</span></label>
+          <label class="option radio"><input type="radio" name="q17" value="freemium"><span class="option-box"></span><span class="option-label" data-i18n="q17a4">Freemium with paid upgrades</span></label>
+          <label class="option radio"><input type="radio" name="q17" value="one_time"><span class="option-box"></span><span class="option-label" data-i18n="q17a5">One-time purchase</span></label>
+        </div>
+      </div>
+
+      <div class="question" id="q18">
+        <div class="q-num" data-i18n="q18num">Question 18</div>
+        <div class="q-text" data-i18n="q18text">What is the maximum monthly price you'd comfortably pay for a tool that dramatically improved your rendering quality and speed?</div>
+        <div class="range-wrap">
+          <div class="range-labels"><span class="range-label">$10</span><span class="range-label">$300</span></div>
+          <input type="range" name="q18" min="10" max="300" step="10" value="50" oninput="updateRange('q18',this.value,'$')">
+          <div class="range-value" id="q18val">$50 / <span data-i18n="month">month</span></div>
+        </div>
+      </div>
+
+      <div class="question" id="q19">
+        <div class="q-num" data-i18n="q19num">Question 19</div>
+        <div class="q-text"><span data-i18n="q19text">What would make you switch from your current tools?</span> <span class="q-sub" data-i18n="selectTop3">(select top 3)</span></div>
+        <div class="options two-col" data-type="checkbox" data-id="q19">
+          <label class="option checkbox"><input type="checkbox" name="q19" value="speed"><span class="option-box"></span><span class="option-label" data-i18n="q19a1">Much faster renders</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q19" value="quality"><span class="option-box"></span><span class="option-label" data-i18n="q19a2">Noticeably better quality</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q19" value="ease"><span class="option-box"></span><span class="option-label" data-i18n="q19a3">Easier to use / less setup</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q19" value="price"><span class="option-box"></span><span class="option-label" data-i18n="q19a4">Lower cost</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q19" value="collab"><span class="option-box"></span><span class="option-label" data-i18n="q19a5">Better collaboration features</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q19" value="ai_power"><span class="option-box"></span><span class="option-label" data-i18n="q19a6">Powerful AI capabilities</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q19" value="integration"><span class="option-box"></span><span class="option-label" data-i18n="q19a7">Better integrations (CAD, BIM)</span></label>
+          <label class="option checkbox"><input type="checkbox" name="q19" value="mobile"><span class="option-box"></span><span class="option-label" data-i18n="q19a8">Mobile / browser-based access</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- S7 -->
+    <div class="section">
+      <div class="section-header"><span class="section-num" data-i18n="s7num">07 —</span><div class="section-line"></div></div>
+      <div class="section-title" data-i18n="s7title">Your Vision</div>
+      <div class="section-desc" data-i18n="s7desc">Open-ended insights that help us build what you actually need.</div>
+
+      <div class="question" id="q20">
+        <div class="q-num" data-i18n="q20num">Question 20</div>
+        <div class="q-text" data-i18n="q20text">Describe your ideal rendering tool in 1–2 sentences. What does it do that nothing else does?</div>
+        <textarea name="q20" rows="3" data-i18n-ph="q20ph" placeholder="The ideal tool would..." oninput="checkTextAnswered('q20')"></textarea>
+      </div>
+
+      <div class="question" id="q21">
+        <div class="q-num" data-i18n="q21num">Question 21</div>
+        <div class="q-text" data-i18n="q21text">Is there a specific feature you've always wanted but never found in any tool?</div>
+        <textarea name="q21" rows="3" data-i18n-ph="q21ph" placeholder="Something like..." oninput="checkTextAnswered('q21')"></textarea>
+      </div>
+
+      <div class="question" id="q22">
+        <div class="q-num" data-i18n="q22num">Question 22</div>
+        <div class="q-text" data-i18n="q22text">Would you be open to joining a beta testing program or early-access community?</div>
+        <div class="options" data-type="radio" data-id="q22">
+          <label class="option radio"><input type="radio" name="q22" value="yes_beta"><span class="option-box"></span><span class="option-label" data-i18n="q22a1">Yes — happy to beta test</span></label>
+          <label class="option radio"><input type="radio" name="q22" value="yes_updates"><span class="option-box"></span><span class="option-label" data-i18n="q22a2">Yes — just keep me updated</span></label>
+          <label class="option radio"><input type="radio" name="q22" value="maybe"><span class="option-box"></span><span class="option-label" data-i18n="q22a3">Maybe, depending on the product</span></label>
+          <label class="option radio"><input type="radio" name="q22" value="no"><span class="option-box"></span><span class="option-label" data-i18n="q22a4">No thanks</span></label>
+        </div>
+        <div style="margin-top:16px">
+          <div class="q-hint" data-i18n="emailHint">Email address (optional — for early access)</div>
+          <input type="text" name="q22_email" placeholder="you@example.com" style="margin-top:8px">
+        </div>
+      </div>
+    </div>
+
+    <div class="submit-section">
+      <div class="completion-badge">
+        <span class="completion-dot" id="completionDot"></span>
+        <span id="completionText" data-i18n="completeToSubmit">Complete survey to submit</span>
+      </div>
+      <br>
+      <button type="button" class="btn-submit" onclick="submitPoll()" data-i18n="submitBtn">Submit Responses →</button>
+      <p class="privacy-note" data-i18n="privacyNote">Your responses are anonymous. No personal data is collected unless you provide your email above.</p>
+    </div>
+  </form>
+
+  <div class="success-state" id="successState">
+    <span class="success-icon">✦</span>
+    <div class="success-title" data-i18n="successTitle">Thank you for your time.</div>
+    <p class="success-sub" data-i18n="successSub">Your input will directly shape the tool we build. We'll be in touch if you signed up for early access.</p>
+    <button type="button" class="btn-submit" style="margin-top:32px;font-size:11px;padding:14px 36px;" onclick="downloadResponse()" data-i18n="downloadBtn">Download Your Response ↓</button>
+  </div>
+
+</div>
+
+<script>
+// ── Translations ──────────────────────────────────────────────────────────────
+const i18n = {
+  en: {
+    eyebrow:'Customer Discovery Poll',
+    h1:'Help us build<br>the <em>perfect</em> tool<br>for your workflow',
+    subtitle:'A quick 5-minute survey to understand how you work, what you need, and what the ideal architectural rendering tool looks like for you.',
+    completion:'Completion', selectAll:'(select all that apply)', selectTop3:'(select top 3)',
+    month:'month', veryDissatisfied:'Very Dissatisfied', verySatisfied:'Very Satisfied',
+    emailHint:'Email address (optional — for early access)',
+    completeToSubmit:'Complete survey to submit', submitBtn:'Submit Responses →',
+    downloadBtn:'Download Your Response ↓',
+    privacyNote:'Your responses are anonymous. No personal data is collected unless you provide your email above.',
+    successTitle:'Thank you for your time.',
+    successSub:"Your input will directly shape the tool we build. We'll be in touch if you signed up for early access.",
+    s1num:'01 —',s1title:'Who You Are',s1desc:'Help us understand your professional background.',
+    s2num:'02 —',s2title:'Current Workflow',s2desc:'Tell us about the tools and processes you use today.',
+    s3num:'03 —',s3title:'Output & Quality',s3desc:'What types of visuals do you create and need?',
+    s4num:'04 —',s4title:'AI & Innovation',s4desc:'Your attitude toward AI-powered rendering.',
+    s5num:'05 —',s5title:'Collaboration & Clients',s5desc:'How you share and collaborate around visuals.',
+    s6num:'06 —',s6title:'Pricing & Adoption',s6desc:'Help us understand your budget and decision-making.',
+    s7num:'07 —',s7title:'Your Vision',s7desc:'Open-ended insights that help us build what you actually need.',
+    q1num:'Question 01',q1text:'What best describes your primary role?',
+    q1a1:'Architect',q1a2:'Interior Designer',q1a3:'3D Visualizer / Rendering Artist',
+    q1a4:'Real Estate Developer',q1a5:'Contractor / Builder',q1a6:'Student',q1a7:'Other',
+    q2num:'Question 02',q2text:'What is the size of your firm or practice?',
+    q2a1:'Solo / Freelance',q2a2:'Small (2–10 people)',q2a3:'Medium (11–50 people)',q2a4:'Large (50+ people)',
+    q3num:'Question 03',q3text:'How many rendering projects do you work on per month?',
+    q3a1:'1–2 projects',q3a2:'3–5 projects',q3a3:'6–10 projects',q3a4:'More than 10 projects',
+    qsnum:'Question 04',qstext:'On a typical mid-size project, how many individual shots or renders do you deliver to the client?',
+    qsa1:'1–3 shots',qsa2:'4–8 shots',qsa3:'9–15 shots',qsa4:'16–30 shots',qsa5:'30+ shots',
+    q4num:'Question 05',q4text:'Which rendering tools do you currently use?',q4ai:'AI-based tool',
+    q5num:'Question 06',q5text:'On average, how long does it take to produce a single high-quality render?',
+    q5a1:'Less than 1 hour',q5a2:'1–3 hours',q5a3:'3–8 hours (half a day)',q5a4:'1–2 days',q5a5:'More than 2 days',
+    q6num:'Question 07',q6text:'What is the most painful or time-consuming part of your current rendering workflow?',
+    q6ph:'e.g. Setting up lighting takes forever, client revisions are chaotic...',
+    q7num:'Question 08',q7text:'What types of renders do you most commonly produce?',
+    q7a1:'Exterior stills',q7a2:'Interior stills',q7a3:'Animated walkthroughs',q7a4:'3D floor plans',
+    q7a5:"Aerial / bird's-eye views",q7a6:'VR / 360° renders',q7a7:'Concept / mood images',q7a8:'Virtual staging',
+    q8num:'Question 09',q8text:'How satisfied are you with the photorealism of renders from your current tools?',
+    q9num:'Question 10',q9text:'How important is style control — switching between photorealistic, sketchy, watercolor, or artistic renders?',
+    q9a1:'Not important — I only need photorealism',q9a2:'Nice to have occasionally',
+    q9a3:'Important for client presentations',q9a4:'Critical — I use multiple styles constantly',
+    q10num:'Question 11',q10text:'Have you tried any AI-powered rendering or design tools?',
+    q10a1:'Yes, I use them regularly',q10a2:"Yes, tried a few but didn't stick with any",
+    q10a3:"No, but I'm interested",q10a4:"No, and I'm skeptical about quality",
+    q11num:'Question 12',q11text:'What is your biggest concern about using AI in your rendering workflow?',
+    q11a1:'Output quality not good enough',q11a2:'Lack of fine-grained creative control',
+    q11a3:"Doesn't accurately reflect my actual design",q11a4:'IP / client confidentiality concerns',
+    q11a5:'Poor integration with existing tools',q11a6:'No concerns — excited to use AI',
+    q12num:'Question 13',q12text:'Rank these AI features by how valuable they would be to you.',
+    q12hint:'Drag to reorder — top = most valuable',
+    r1:'Text-to-render (describe a scene, get an image)',r2:'Image-to-render (upload sketch or floor plan)',
+    r3:'Auto-furnishing & material suggestions',r4:'Style transfer (apply a design aesthetic)',
+    r5:'AI lighting optimization',r6:'Instant design variation generation',
+    q13num:'Question 14',q13text:'How do you currently share renders with clients?',
+    q13a1:'Email / file transfer',q13a2:'Cloud link (Drive, Dropbox)',q13a3:'In-person presentation',
+    q13a4:'Client portal / project management tool',q13a5:'PDF / print report',
+    q14num:'Question 15',q14text:'How many revision rounds do you typically go through before a client approves a render?',
+    q14a1:'1 round — rarely need revisions',q14a2:'2–3 rounds',q14a3:'4–6 rounds',q14a4:'7+ rounds — revisions are a major issue',
+    q16num:'Question 16',q16text:'How much do you currently spend per month on rendering software and subscriptions?',
+    q16a1:'$0 — using free or pirated tools',q16a2:'$1–$50 / month',q16a3:'$50–$150 / month',q16a4:'$150–$400 / month',q16a5:'$400+ / month',
+    q17num:'Question 17',q17text:'What pricing model would you prefer?',
+    q17a1:'Monthly subscription (flat fee)',q17a2:'Pay per render / credits model',
+    q17a3:'Annual subscription (discounted)',q17a4:'Freemium with paid upgrades',q17a5:'One-time purchase',
+    q18num:'Question 18',q18text:"What is the maximum monthly price you'd comfortably pay for a tool that dramatically improved your rendering quality and speed?",
+    q19num:'Question 19',q19text:'What would make you switch from your current tools?',
+    q19a1:'Much faster renders',q19a2:'Noticeably better quality',q19a3:'Easier to use / less setup',
+    q19a4:'Lower cost',q19a5:'Better collaboration features',q19a6:'Powerful AI capabilities',
+    q19a7:'Better integrations (CAD, BIM)',q19a8:'Mobile / browser-based access',
+    q20num:'Question 20',q20text:'Describe your ideal rendering tool in 1–2 sentences. What does it do that nothing else does?',q20ph:'The ideal tool would...',
+    q21num:'Question 21',q21text:"Is there a specific feature you've always wanted but never found in any tool?",q21ph:'Something like...',
+    q22num:'Question 22',q22text:'Would you be open to joining a beta testing program or early-access community?',
+    q22a1:'Yes — happy to beta test',q22a2:'Yes — just keep me updated',q22a3:'Maybe, depending on the product',q22a4:'No thanks',
+    remainingQ: n => `${n} question${n!==1?'s':''} remaining`,
+    allDone: 'All done — ready to submit',
+    progressOf: (a,t) => `${a} / ${t}`,
+  },
+  ar: {
+    eyebrow:'استطلاع اكتشاف العملاء',
+    h1:'ساعدنا في بناء<br>الأداة <em>المثالية</em><br>لسير عملك',
+    subtitle:'استطلاع سريع من 5 دقائق لفهم أسلوب عملك واحتياجاتك وكيف يبدو برنامج الريندر المعماري المثالي بالنسبة لك.',
+    completion:'نسبة الإكمال', selectAll:'(اختر كل ما ينطبق)', selectTop3:'(اختر أهم 3)',
+    month:'شهريًا', veryDissatisfied:'غير راضٍ إطلاقًا', verySatisfied:'راضٍ تمامًا',
+    emailHint:'البريد الإلكتروني (اختياري — للوصول المبكر)',
+    completeToSubmit:'أكمل الاستطلاع للإرسال', submitBtn:'إرسال الإجابات ←',
+    downloadBtn:'تحميل إجابتك ↓',
+    privacyNote:'إجاباتك مجهولة الهوية. لا يتم جمع أي بيانات شخصية إلا إذا أدخلت بريدك الإلكتروني.',
+    successTitle:'شكرًا لك على وقتك.',
+    successSub:'ستساهم إجاباتك مباشرةً في تشكيل الأداة التي نبنيها. سنتواصل معك إذا سجّلت للوصول المبكر.',
+    s1num:'01 —',s1title:'من أنت',s1desc:'ساعدنا على فهم خلفيتك المهنية.',
+    s2num:'02 —',s2title:'سير العمل الحالي',s2desc:'أخبرنا عن الأدوات والعمليات التي تستخدمها اليوم.',
+    s3num:'03 —',s3title:'المخرجات والجودة',s3desc:'ما أنواع المرئيات التي تنتجها وتحتاجها؟',
+    s4num:'04 —',s4title:'الذكاء الاصطناعي والابتكار',s4desc:'موقفك من الريندر المدعوم بالذكاء الاصطناعي.',
+    s5num:'05 —',s5title:'التعاون والعملاء',s5desc:'كيف تشارك المرئيات وتتعاون حولها.',
+    s6num:'06 —',s6title:'التسعير والاعتماد',s6desc:'ساعدنا على فهم ميزانيتك وقرارات الشراء.',
+    s7num:'07 —',s7title:'رؤيتك',s7desc:'أفكار مفتوحة تساعدنا على بناء ما تحتاجه فعلًا.',
+    q1num:'السؤال 1',q1text:'ما الوصف الأنسب لدورك الأساسي؟',
+    q1a1:'مهندس معماري',q1a2:'مصمم داخلي',q1a3:'فنان ريندر / مصور ثلاثي الأبعاد',
+    q1a4:'مطوّر عقاري',q1a5:'مقاول / بنّاء',q1a6:'طالب',q1a7:'أخرى',
+    q2num:'السؤال 2',q2text:'ما حجم مكتبك أو ممارستك المهنية؟',
+    q2a1:'مستقل / فريلانسر',q2a2:'صغير (2–10 أشخاص)',q2a3:'متوسط (11–50 شخصًا)',q2a4:'كبير (أكثر من 50)',
+    q3num:'السؤال 3',q3text:'كم مشروع ريندر تعمل عليه شهريًا؟',
+    q3a1:'1–2 مشاريع',q3a2:'3–5 مشاريع',q3a3:'6–10 مشاريع',q3a4:'أكثر من 10 مشاريع',
+    qsnum:'السؤال 4',qstext:'في مشروع متوسط الحجم، كم لقطة أو صورة ريندر تسلّم للعميل عادةً؟',
+    qsa1:'1–3 لقطات',qsa2:'4–8 لقطات',qsa3:'9–15 لقطة',qsa4:'16–30 لقطة',qsa5:'أكثر من 30 لقطة',
+    q4num:'السؤال 5',q4text:'ما أدوات الريندر التي تستخدمها حاليًا؟',q4ai:'أداة مدعومة بالذكاء الاصطناعي',
+    q5num:'السؤال 6',q5text:'كم يستغرق إنتاج صورة ريندر عالية الجودة في المتوسط؟',
+    q5a1:'أقل من ساعة',q5a2:'1–3 ساعات',q5a3:'3–8 ساعات (نصف يوم)',q5a4:'1–2 يوم',q5a5:'أكثر من يومين',
+    q6num:'السؤال 7',q6text:'ما الجزء الأكثر إيلامًا أو استهلاكًا للوقت في سير عملك الحالي؟',
+    q6ph:'مثلًا: إعداد الإضاءة يأخذ وقتًا طويلًا، مراجعات العملاء فوضوية...',
+    q7num:'السؤال 8',q7text:'ما أنواع الريندر الأكثر شيوعًا في عملك؟',
+    q7a1:'لقطات خارجية',q7a2:'لقطات داخلية',q7a3:'جولات متحركة',q7a4:'مخططات طابقية ثلاثية الأبعاد',
+    q7a5:'مناظر جوية / من الأعلى',q7a6:'ريندر VR / 360°',q7a7:'صور مفاهيمية / مزاجية',q7a8:'تأثيث افتراضي',
+    q8num:'السؤال 9',q8text:'ما مدى رضاك عن واقعية صور الريندر من أدواتك الحالية؟',
+    q9num:'السؤال 10',q9text:'ما مدى أهمية التحكم في الأسلوب — التبديل بين الواقعي والخطي والألوان المائية والفني؟',
+    q9a1:'غير مهم — أحتاج الواقعية فقط',q9a2:'جيد أحيانًا',
+    q9a3:'مهم لعروض العملاء',q9a4:'ضروري — أستخدم أساليب متعددة باستمرار',
+    q10num:'السؤال 11',q10text:'هل جربت أدوات ريندر أو تصميم مدعومة بالذكاء الاصطناعي؟',
+    q10a1:'نعم، أستخدمها بانتظام',q10a2:'نعم، جربت بعضها لكنني لم أستمر مع أي منها',
+    q10a3:'لا، لكنني مهتم',q10a4:'لا، وأنا متشكك في الجودة',
+    q11num:'السؤال 12',q11text:'ما أكبر مخاوفك من استخدام الذكاء الاصطناعي في سير عملك؟',
+    q11a1:'جودة المخرجات غير كافية',q11a2:'نقص في التحكم الإبداعي الدقيق',
+    q11a3:'لا يعكس تصميمي الفعلي بدقة',q11a4:'مخاوف تتعلق بالملكية الفكرية وسرية العملاء',
+    q11a5:'تكامل ضعيف مع الأدوات الحالية',q11a6:'لا مخاوف — متحمس لاستخدام الذكاء الاصطناعي',
+    q12num:'السؤال 13',q12text:'رتّب ميزات الذكاء الاصطناعي هذه حسب قيمتها بالنسبة لك.',
+    q12hint:'اسحب لإعادة الترتيب — الأعلى = الأكثر قيمة',
+    r1:'نص إلى ريندر (صف مشهدًا واحصل على صورة)',r2:'صورة إلى ريندر (ارفع رسمًا أو مخططًا)',
+    r3:'اقتراحات الأثاث والمواد تلقائيًا',r4:'نقل الأسلوب (تطبيق جماليات التصميم)',
+    r5:'تحسين الإضاءة بالذكاء الاصطناعي',r6:'توليد تنويعات تصميمية فورية',
+    q13num:'السؤال 14',q13text:'كيف تشارك صور الريندر مع العملاء حاليًا؟',
+    q13a1:'بريد إلكتروني / نقل ملفات',q13a2:'رابط سحابي (Drive، Dropbox)',
+    q13a3:'عرض تقديمي وجهًا لوجه',q13a4:'بوابة عميل / أداة إدارة مشاريع',q13a5:'تقرير PDF / مطبوع',
+    q14num:'السؤال 15',q14text:'كم جولة مراجعة تمر بها عادةً قبل أن يوافق العميل على الريندر؟',
+    q14a1:'جولة واحدة — نادرًا ما أحتاج مراجعات',q14a2:'2–3 جولات',q14a3:'4–6 جولات',q14a4:'7+ جولات — المراجعات مشكلة كبيرة',
+    q16num:'السؤال 16',q16text:'كم تنفق حاليًا شهريًا على برامج الريندر والاشتراكات؟',
+    q16a1:'0$ — أستخدم أدوات مجانية أو مقرصنة',q16a2:'1$–50$ / شهر',q16a3:'50$–150$ / شهر',q16a4:'150$–400$ / شهر',q16a5:'400$+ / شهر',
+    q17num:'السؤال 17',q17text:'ما نموذج التسعير الذي تفضله؟',
+    q17a1:'اشتراك شهري (سعر ثابت)',q17a2:'الدفع لكل ريندر / نظام رصيد',
+    q17a3:'اشتراك سنوي (بخصم)',q17a4:'مجاني مع ميزات مدفوعة',q17a5:'شراء لمرة واحدة',
+    q18num:'السؤال 18',q18text:'ما الحد الأقصى للسعر الشهري الذي يمكنك دفعه بارتياح لأداة تحسّن جودة ريندرك وسرعته بشكل ملحوظ؟',
+    q19num:'السؤال 19',q19text:'ما الذي سيجعلك تتحول عن أدواتك الحالية؟',
+    q19a1:'ريندر أسرع بكثير',q19a2:'جودة أفضل بشكل واضح',q19a3:'أسهل استخدامًا / إعداد أقل',
+    q19a4:'تكلفة أقل',q19a5:'ميزات تعاون أفضل',q19a6:'قدرات ذكاء اصطناعي قوية',
+    q19a7:'تكاملات أفضل (CAD, BIM)',q19a8:'وصول عبر الجوال / المتصفح',
+    q20num:'السؤال 20',q20text:'صف أداة الريندر المثالية في جملة أو جملتين. ماذا تفعل ولا تستطيع أي أداة أخرى؟',q20ph:'الأداة المثالية ستكون...',
+    q21num:'السؤال 21',q21text:'هل هناك ميزة طالما أردتها ولم تجدها في أي أداة؟',q21ph:'شيء مثل...',
+    q22num:'السؤال 22',q22text:'هل أنت منفتح على الانضمام إلى برنامج اختبار تجريبي أو مجتمع الوصول المبكر؟',
+    q22a1:'نعم — سعيد بالاختبار التجريبي',q22a2:'نعم — فقط أبقِني على اطلاع',
+    q22a3:'ربما، يعتمد على المنتج',q22a4:'لا شكرًا',
+    remainingQ: n => `تبقّى ${n} سؤال`,
+    allDone: 'اكتمل — جاهز للإرسال',
+    progressOf: (a,t) => `${a} / ${t}`,
+  }
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentLang = 'en';
+const answered = new Set();
+const TOTAL = 22;
+
+// ── Language Switch ───────────────────────────────────────────────────────────
+function setLang(lang) {
+  if (lang === currentLang) return;
+  currentLang = lang;
+  const c = document.getElementById('mainContainer');
+  c.classList.add('switching');
+  setTimeout(() => {
+    const html = document.documentElement;
+    html.lang = lang;
+    html.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.body.classList.toggle('ar', lang === 'ar');
+    document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+    document.getElementById('btnAr').classList.toggle('active', lang === 'ar');
+    applyTranslations();
+    updateProgress();
+    c.classList.remove('switching');
+  }, 200);
+}
+
+function applyTranslations() {
+  const t = i18n[currentLang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.dataset.i18n;
+    if (t[k] !== undefined) el.textContent = t[k];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const k = el.dataset.i18nHtml;
+    if (t[k] !== undefined) el.innerHTML = t[k];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const k = el.dataset.i18nPh;
+    if (t[k] !== undefined) el.placeholder = t[k];
+  });
+  // update q18 range display
+  const r18 = document.querySelector('input[name="q18"]');
+  if (r18) {
+    document.getElementById('q18val').innerHTML = '$' + r18.value + ' / <span data-i18n="month">' + t['month'] + '</span>';
+  }
+}
+
+// ── Options ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.option').forEach(option => {
+  const input = option.querySelector('input');
+  if (!input) return;
+  option.addEventListener('click', () => {
+    const name = input.name;
+    const isCheckbox = input.type === 'checkbox';
+    if (!isCheckbox) {
+      document.querySelectorAll(`input[name="${name}"]`).forEach(i => i.closest('.option').classList.remove('selected'));
+    }
+    input.checked = isCheckbox ? !input.checked : true;
+    option.classList.toggle('selected', isCheckbox ? input.checked : true);
+    const qId = option.closest('.options').dataset.id;
+    if ([...document.querySelectorAll(`[data-id="${qId}"] input`)].some(i => i.checked)) {
+      answered.add(qId); markAnswered(qId);
+    } else {
+      answered.delete(qId);
+      const qEl = document.getElementById(qId);
+      if (qEl) qEl.classList.remove('answered');
+    }
+    updateProgress();
+  });
+});
+
+function markAnswered(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('answered');
+}
+
+// ── Ranges ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('input[type="range"]').forEach(r => {
+  const id = r.name;
+  const el = document.getElementById(id + 'val');
+  if (el) {
+    if (id === 'q18') el.innerHTML = '$' + r.value + ' / <span data-i18n="month">month</span>';
+    else el.textContent = r.value + ' / 10';
+  }
+});
+
+function updateRange(id, val, prefix = '') {
+  const t = i18n[currentLang];
+  const el = document.getElementById(id + 'val');
+  if (id === 'q18') el.innerHTML = '$' + val + ' / <span data-i18n="month">' + t['month'] + '</span>';
+  else el.textContent = val + ' / 10';
+  answered.add(id); markAnswered(id);
+  updateProgress();
+}
+
+function checkTextAnswered(id) {
+  const el = document.querySelector(`[name="${id}"]`);
+  if (el && el.value.trim().length > 0) {
+    answered.add(id); markAnswered(id);
+  } else {
+    answered.delete(id);
+    const qEl = document.getElementById(id);
+    if (qEl) qEl.classList.remove('answered');
+  }
+  updateProgress();
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+function updateProgress() {
+  const t = i18n[currentLang];
+  const count = answered.size;
+  document.getElementById('progressFill').style.width = Math.min((count / TOTAL) * 100, 100) + '%';
+  document.getElementById('progressCount').textContent = t.progressOf(count, TOTAL);
+  const dot = document.getElementById('completionDot');
+  const txt = document.getElementById('completionText');
+  if (count >= TOTAL) { dot.classList.add('complete'); txt.textContent = t.allDone; }
+  else { dot.classList.remove('complete'); txt.textContent = t.remainingQ(TOTAL - count); }
+}
+
+// ── Drag & Drop (Desktop) ─────────────────────────────────────────────────────
+let dragSrc = null;
+document.querySelectorAll('.rank-item').forEach(item => {
+  item.addEventListener('dragstart', () => { dragSrc = item; item.classList.add('dragging'); });
+  item.addEventListener('dragend', () => { item.classList.remove('dragging'); updateRankNums(); });
+  item.addEventListener('dragover', e => { e.preventDefault(); item.classList.add('drag-over'); });
+  item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+  item.addEventListener('drop', e => {
+    e.preventDefault(); item.classList.remove('drag-over');
+    if (dragSrc !== item) {
+      const list = document.getElementById('rankList');
+      const items = [...list.querySelectorAll('.rank-item')];
+      list.insertBefore(dragSrc, items.indexOf(dragSrc) < items.indexOf(item) ? item.nextSibling : item);
+      updateRankNums();
+    }
+  });
+});
+
+// ── Touch Drag & Drop (Mobile) ───────────────────────────────────────────────
+let touchDragItem = null;
+let touchPlaceholder = null;
+let touchStartY = 0;
+let touchOffsetY = 0;
+
+function getTouchTarget(y) {
+  const list = document.getElementById('rankList');
+  const items = [...list.querySelectorAll('.rank-item:not(.touch-dragging)')];
+  for (const item of items) {
+    const rect = item.getBoundingClientRect();
+    if (y >= rect.top && y <= rect.bottom) return item;
+  }
+  return null;
+}
+
+document.querySelectorAll('.rank-item').forEach(item => {
+  item.addEventListener('touchstart', e => {
+    const touch = e.touches[0];
+    touchDragItem = item;
+    touchStartY = touch.clientY;
+    const rect = item.getBoundingClientRect();
+    touchOffsetY = touch.clientY - rect.top;
+
+    // Create placeholder to hold space
+    touchPlaceholder = document.createElement('div');
+    touchPlaceholder.style.height = rect.height + 'px';
+    touchPlaceholder.style.border = '1px dashed var(--accent)';
+    touchPlaceholder.style.borderRadius = '0';
+    touchPlaceholder.style.opacity = '0.4';
+    touchPlaceholder.className = 'rank-placeholder';
+
+    // Style the dragged item
+    item.classList.add('touch-dragging');
+    item.style.position = 'fixed';
+    item.style.left = rect.left + 'px';
+    item.style.width = rect.width + 'px';
+    item.style.top = rect.top + 'px';
+    item.style.zIndex = '1000';
+    item.style.boxShadow = '0 8px 32px rgba(200,169,110,0.25)';
+    item.style.borderColor = 'var(--accent)';
+
+    item.parentNode.insertBefore(touchPlaceholder, item);
+  }, { passive: true });
+
+  item.addEventListener('touchmove', e => {
+    if (!touchDragItem) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchDragItem.style.top = (touch.clientY - touchOffsetY) + 'px';
+
+    // Find item under finger & move placeholder
+    const target = getTouchTarget(touch.clientY);
+    if (target && target !== touchPlaceholder) {
+      const list = document.getElementById('rankList');
+      const items = [...list.children];
+      const targetIdx = items.indexOf(target);
+      const placeholderIdx = items.indexOf(touchPlaceholder);
+      if (targetIdx > placeholderIdx) {
+        list.insertBefore(touchPlaceholder, target.nextSibling);
+      } else {
+        list.insertBefore(touchPlaceholder, target);
+      }
+      target.classList.remove('drag-over');
+    }
+  }, { passive: false });
+
+  item.addEventListener('touchend', () => {
+    if (!touchDragItem || !touchPlaceholder) return;
+    // Move dragged item to placeholder position
+    const list = document.getElementById('rankList');
+    list.insertBefore(touchDragItem, touchPlaceholder);
+    touchPlaceholder.remove();
+
+    // Reset styles
+    touchDragItem.classList.remove('touch-dragging');
+    touchDragItem.style.position = '';
+    touchDragItem.style.left = '';
+    touchDragItem.style.width = '';
+    touchDragItem.style.top = '';
+    touchDragItem.style.zIndex = '';
+    touchDragItem.style.boxShadow = '';
+    touchDragItem.style.borderColor = '';
+
+    updateRankNums();
+    touchDragItem = null;
+    touchPlaceholder = null;
+  }, { passive: true });
+});
+
+function updateRankNums() {
+  document.querySelectorAll('#rankList .rank-item').forEach((item, i) => item.querySelector('.rank-num').textContent = i + 1);
+  answered.add('q12'); markAnswered('q12'); updateProgress();
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+const SCRIPT_URL = 'YOUR_SCRIPT_URL_HERE'; // ← Replace with your Google Apps Script web app URL
+
+function submitPoll() {
+  const data = { lang: currentLang, submittedAt: new Date().toISOString() };
+  document.querySelectorAll('input[type="radio"]:checked, input[type="checkbox"]:checked').forEach(i => { if (!data[i.name]) data[i.name] = []; data[i.name].push(i.value); });
+  document.querySelectorAll('input[type="range"]').forEach(i => data[i.name] = i.value);
+  document.querySelectorAll('textarea, input[type="text"]').forEach(i => { if (i.value) data[i.name] = i.value; });
+  data['q12_rank'] = [...document.querySelectorAll('#rankList .rank-item')].map(i => i.dataset.val);
+
+  // Persist to localStorage as backup
+  const existing = JSON.parse(localStorage.getItem('poll_responses') || '[]');
+  existing.push(data);
+  localStorage.setItem('poll_responses', JSON.stringify(existing));
+  window._lastPollData = data;
+
+  // Show loading state
+  const btn = document.querySelector('.btn-submit');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = currentLang === 'ar' ? 'جاري الإرسال...' : 'Submitting...';
+  btn.style.opacity = '0.6';
+
+  // POST to Google Sheets
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(res => {
+    console.log('Sheet response:', res);
+    showSuccess();
+  })
+  .catch(err => {
+    console.warn('Sheet POST failed, data saved locally:', err);
+    // Still show success — data is in localStorage
+    showSuccess();
+  });
+}
+
+function showSuccess() {
+  document.getElementById('pollForm').style.display = 'none';
+  const s = document.getElementById('successState');
+  s.style.display = 'block';
+  setTimeout(() => s.classList.add('visible'), 10);
+}
+
+function downloadResponse() {
+  const data = window._lastPollData;
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'poll-response-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+applyTranslations();
+updateProgress();
+</script>
+</body>
+</html>
