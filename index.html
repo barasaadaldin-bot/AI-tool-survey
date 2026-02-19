@@ -589,7 +589,6 @@
     <span class="success-icon">✦</span>
     <div class="success-title" data-i18n="successTitle">Thank you for your time.</div>
     <p class="success-sub" data-i18n="successSub">Your input will directly shape the tool we build. We'll be in touch if you signed up for early access.</p>
-    <button type="button" class="btn-submit" style="margin-top:32px;font-size:11px;padding:14px 36px;" onclick="downloadResponse()" data-i18n="downloadBtn">Download Your Response ↓</button>
   </div>
 
 </div>
@@ -605,7 +604,7 @@ const i18n = {
     month:'month', veryDissatisfied:'Very Dissatisfied', verySatisfied:'Very Satisfied',
     emailHint:'Email address (optional — for early access)',
     completeToSubmit:'Complete survey to submit', submitBtn:'Submit Responses →',
-    downloadBtn:'Download Your Response ↓',
+
     privacyNote:'Your responses are anonymous. No personal data is collected unless you provide your email above.',
     successTitle:'Thank you for your time.',
     successSub:"Your input will directly shape the tool we build. We'll be in touch if you signed up for early access.",
@@ -680,7 +679,7 @@ const i18n = {
     month:'شهريًا', veryDissatisfied:'غير راضٍ إطلاقًا', verySatisfied:'راضٍ تمامًا',
     emailHint:'البريد الإلكتروني (اختياري — للوصول المبكر)',
     completeToSubmit:'أكمل الاستطلاع للإرسال', submitBtn:'إرسال الإجابات ←',
-    downloadBtn:'تحميل إجابتك ↓',
+
     privacyNote:'إجاباتك مجهولة الهوية. لا يتم جمع أي بيانات شخصية إلا إذا أدخلت بريدك الإلكتروني.',
     successTitle:'شكرًا لك على وقتك.',
     successSub:'ستساهم إجاباتك مباشرةً في تشكيل الأداة التي نبنيها. سنتواصل معك إذا سجّلت للوصول المبكر.',
@@ -1027,17 +1026,6 @@ function showSuccess() {
   setTimeout(() => s.classList.add('visible'), 10);
 }
 
-function downloadResponse() {
-  const data = window._lastPollData;
-  if (!data) return;
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'poll-response-' + new Date().toISOString().slice(0,10) + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 applyTranslations();
 updateProgress();
